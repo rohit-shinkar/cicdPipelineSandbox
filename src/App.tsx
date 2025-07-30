@@ -11,6 +11,7 @@ import { DLQDashboard } from './components/dlq/DLQDashboard';
 import { TestDashboard } from './components/test-monitoring/TestDashboard';
 import { ErrorDetailsPage } from './components/error-details/ErrorDetailsPage';
 import { CICDDashboard } from './components/cicd/CICDDashboard';
+import { ProdReadinessDashboard } from './components/prod-readiness/ProdReadinessDashboard';
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
         <Route path="/dlq/error/:errorId" element={<ErrorDetailsPage />} />
         <Route path="/test-monitoring" element={<TestDashboard />} />
         <Route path="/cicd" element={<CICDDashboard />} />
+        <Route path="/prod-readiness" element={<ProdReadinessDashboard />} />
       </Routes>
     </MainLayout>
   );

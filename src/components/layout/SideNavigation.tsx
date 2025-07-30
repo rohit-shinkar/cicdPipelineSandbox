@@ -15,7 +15,8 @@ import {
   Clock,
   BarChart2,
   Database,
-  Zap
+  Zap,
+  Shield
 } from 'lucide-react';
 
 interface NavigationItem {
@@ -53,6 +54,7 @@ export const SideNavigation: React.FC = () => {
     { name: 'LSC Regression', path: '/lsc-regression/theta', icon: <BarChart2 className="w-5 h-5" /> },
     { name: 'DLQ Manager', path: '/dlq', icon: <Database className="w-5 h-5" /> },
     { name: 'CI/CD Pipeline', path: '/cicd', icon: <Zap className="w-5 h-5" /> },
+    { name: 'Prod Readiness', path: '/prod-readiness', icon: <Shield className="w-5 h-5" /> },
   ];
 
   const environments: EnvironmentItem[] = [
