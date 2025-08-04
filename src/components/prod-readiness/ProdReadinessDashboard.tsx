@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { SystemDetailView } from './SystemDetailView';
 import { 
   Shield, 
   Activity, 
@@ -17,16 +18,10 @@ import {
   Filter,
   Download,
   Settings,
-  ArrowUpRight,
-  ArrowDownRight,
   Minus
 } from 'lucide-react';
 import { format, subHours } from 'date-fns';
 import { 
-  LineChart, 
-  Line, 
-  AreaChart, 
-  Area, 
   BarChart, 
   Bar, 
   PieChart, 
@@ -37,7 +32,9 @@ import {
   CartesianGrid, 
   Tooltip, 
   ResponsiveContainer,
-  Legend
+  Legend,
+  LineChart,
+  Line
 } from 'recharts';
 import { SystemHealth, ReadinessCheck, EnvironmentMetrics, TrendData } from '../../types/prodReadiness';
 
@@ -160,15 +157,29 @@ const generateReadinessChecks = (): ReadinessCheck[] => [
   }
 ];
 
-const generateTrendData = (): TrendData[] => {
-  return Array.from({ length: 24 }, (_, i) => {
-    const timestamp = subHours(new Date(), 23 - i);
+// Generate deployment frequency data
+const generateDeploymentData = () => {
+  return Array.from({ length: 7 }, (_, i) => {
+    const timestamp = new Date();
+    timestamp.setDate(timestamp.getDate() - (6 - i));
     return {
-      timestamp: timestamp.toISOString(),
-      overall_score: 85 + Math.random() * 10,
-      healthy_systems: 4 + Math.floor(Math.random() * 2),
-      warning_systems: 1 + Math.floor(Math.random() * 2),
-      critical_systems: Math.floor(Math.random() * 2)
+      day: timestamp.toLocaleDateString('en-US', { weekday: 'short' }),
+      deployments: Math.floor(Math.random() * 8) + 2,
+      rollbacks: Math.floor(Math.random() * 2),
+      success_rate: 85 + Math.random() * 15
+    };
+  });
+};
+
+// Generate system uptime data
+const generateUptimeData = () => {
+  return Array.from({ length: 30 }, (_, i) => {
+    const timestamp = new Date();
+    timestamp.setDate(timestamp.getDate() - (29 - i));
+    return {
+      date: timestamp.toISOString(),
+      uptime: 95 + Math.random() * 5,
+      incidents: Math.floor(Math.random() * 3)
     };
   });
 };
@@ -223,7 +234,10 @@ const StatusCard: React.FC<{
   );
 };
 
-const SystemCard: React.FC<{ system: SystemHealth }> = ({ system }) => {
+const SystemCard: React.FC<{ 
+  system: SystemHealth; 
+  onClick: () => void;
+}> = ({ system, onClick }) => {
   const getStatusIcon = () => {
     switch (system.status) {
       case 'healthy': return <CheckCircle2 className="w-5 h-5 text-green-500" />;
@@ -251,7 +265,10 @@ const SystemCard: React.FC<{ system: SystemHealth }> = ({ system }) => {
   };
 
   return (
-    <div className={`p-4 rounded-lg border-l-4 ${getStatusColor()} hover:shadow-md transition-all`}>
+    <div 
+      className={`p-4 rounded-lg border-l-4 ${getStatusColor()} hover:shadow-md transition-all cursor-pointer`}
+      onClick={onClick}
+    >
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center space-x-3">
           <div className="flex items-center space-x-2">
@@ -265,7 +282,7 @@ const SystemCard: React.FC<{ system: SystemHealth }> = ({ system }) => {
         </div>
       </div>
       
-      <div className="grid grid-cols-2 gap-3 mb-3">
+      <div className="grid grid-cols-4 gap-3 mb-3">
         <div className="text-sm">
           <span className="text-gray-500">Availability:</span>
           <span className="ml-2 font-medium">{system.metrics.availability}%</span>
@@ -292,6 +309,13 @@ const SystemCard: React.FC<{ system: SystemHealth }> = ({ system }) => {
           </div>
         </div>
       )}
+      
+      <div className="mt-3 pt-3 border-t border-gray-200">
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-gray-500">Click for details</span>
+          <ArrowUpRight className="w-4 h-4 text-gray-400" />
+        </div>
+      </div>
     </div>
   );
 };
@@ -345,14 +369,17 @@ const ReadinessCheckCard: React.FC<{ check: ReadinessCheck }> = ({ check }) => {
 export const ProdReadinessDashboard: React.FC = () => {
   const [systems, setSystems] = useState<SystemHealth[]>([]);
   const [readinessChecks, setReadinessChecks] = useState<ReadinessCheck[]>([]);
-  const [trendData, setTrendData] = useState<TrendData[]>([]);
+  const [deploymentData, setDeploymentData] = useState<any[]>([]);
+  const [uptimeData, setUptimeData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedSystem, setSelectedSystem] = useState<SystemHealth | null>(null);
 
   useEffect(() => {
     setSystems(generateMockSystems());
     setReadinessChecks(generateReadinessChecks());
-    setTrendData(generateTrendData());
+    setDeploymentData(generateDeploymentData());
+    setUptimeData(generateUptimeData());
   }, []);
 
   const handleRefresh = () => {
@@ -360,7 +387,8 @@ export const ProdReadinessDashboard: React.FC = () => {
     setTimeout(() => {
       setSystems(generateMockSystems());
       setReadinessChecks(generateReadinessChecks());
-      setTrendData(generateTrendData());
+      setDeploymentData(generateDeploymentData());
+      setUptimeData(generateUptimeData());
       setLoading(false);
     }, 1000);
   };
@@ -384,6 +412,15 @@ export const ProdReadinessDashboard: React.FC = () => {
   const filteredSystems = selectedCategory === 'all' 
     ? systems 
     : systems.filter(s => s.category === selectedCategory);
+
+  if (selectedSystem) {
+    return (
+      <SystemDetailView 
+        system={selectedSystem} 
+        onBack={() => setSelectedSystem(null)} 
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -462,38 +499,31 @@ export const ProdReadinessDashboard: React.FC = () => {
 
         {/* Charts Section */}
         <div className="grid grid-cols-3 gap-6 mb-8">
-          {/* Trend Chart */}
+          {/* Deployment Frequency */}
           <div className="col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <h3 className="text-lg font-semibold mb-4">System Health Trend (24h)</h3>
+            <h3 className="text-lg font-semibold mb-4">Weekly Deployment Activity</h3>
             <div className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={trendData}>
-                  <defs>
-                    <linearGradient id="scoreGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/>
-                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
+                <BarChart data={deploymentData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis 
-                    dataKey="timestamp"
-                    tickFormatter={(time) => format(new Date(time), 'HH:mm')}
-                    stroke="#9ca3af"
-                  />
+                  <XAxis dataKey="day" stroke="#9ca3af" />
                   <YAxis stroke="#9ca3af" />
                   <Tooltip
-                    labelFormatter={(time) => format(new Date(time as string), 'MMM d, HH:mm')}
                     contentStyle={{ backgroundColor: 'white', borderRadius: '8px', border: '1px solid #e5e7eb' }}
                   />
-                  <Area
-                    type="monotone"
-                    dataKey="overall_score"
-                    stroke="#3b82f6"
-                    fillOpacity={1}
-                    fill="url(#scoreGradient)"
-                    name="Overall Score"
+                  <Bar 
+                    dataKey="deployments" 
+                    fill="#3b82f6" 
+                    name="Deployments"
+                    radius={[4, 4, 0, 0]}
                   />
-                </AreaChart>
+                  <Bar 
+                    dataKey="rollbacks" 
+                    fill="#ef4444" 
+                    name="Rollbacks"
+                    radius={[4, 4, 0, 0]}
+                  />
+                </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
@@ -535,15 +565,50 @@ export const ProdReadinessDashboard: React.FC = () => {
           </div>
         </div>
 
+        {/* System Uptime Trend */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-8">
+          <h3 className="text-lg font-semibold mb-4">System Uptime Trend (30 days)</h3>
+          <div className="h-[200px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={uptimeData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis 
+                  dataKey="date"
+                  tickFormatter={(date) => format(new Date(date), 'MMM d')}
+                  stroke="#9ca3af"
+                />
+                <YAxis domain={[95, 100]} stroke="#9ca3af" />
+                <Tooltip
+                  labelFormatter={(date) => format(new Date(date as string), 'MMM d, yyyy')}
+                  contentStyle={{ backgroundColor: 'white', borderRadius: '8px', border: '1px solid #e5e7eb' }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="uptime" 
+                  stroke="#22c55e" 
+                  strokeWidth={2}
+                  dot={false}
+                  name="Uptime %"
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
         {/* Systems Grid */}
         <div className="mb-8">
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
             <div className="bg-gradient-to-r from-slate-600 to-slate-700 text-white p-4 rounded-lg mb-6">
               <h2 className="text-lg font-semibold">System Health Overview</h2>
+              <p className="text-slate-200 text-sm mt-1">Click on any system to view detailed metrics and analytics</p>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="space-y-4">
               {filteredSystems.map((system) => (
-                <SystemCard key={system.id} system={system} />
+                <SystemCard 
+                  key={system.id} 
+                  system={system} 
+                  onClick={() => setSelectedSystem(system)}
+                />
               ))}
             </div>
           </div>
